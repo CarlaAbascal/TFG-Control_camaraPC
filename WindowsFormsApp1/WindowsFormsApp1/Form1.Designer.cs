@@ -37,6 +37,8 @@
             this.button4 = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.labelEstado = new System.Windows.Forms.Label();
+            this.listBox1 = new System.Windows.Forms.ListBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxPC)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxDron)).BeginInit();
             this.SuspendLayout();
@@ -94,7 +96,6 @@
             this.pictureBoxPC.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBoxPC.TabIndex = 5;
             this.pictureBoxPC.TabStop = false;
-//            this.pictureBoxPC.Click += new System.EventHandler(this.pictureBox1_Click);
             // 
             // pictureBoxDron
             // 
@@ -104,7 +105,6 @@
             this.pictureBoxDron.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBoxDron.TabIndex = 6;
             this.pictureBoxDron.TabStop = false;
-//            this.pictureBoxDron.Click += new System.EventHandler(this.pictureBoxDron_Click);
             // 
             // button4
             // 
@@ -126,7 +126,6 @@
             this.label1.Size = new System.Drawing.Size(75, 20);
             this.label1.TabIndex = 8;
             this.label1.Text = "Video PC";
-//            this.label1.Click += new System.EventHandler(this.label1_Click);
             // 
             // label2
             // 
@@ -136,13 +135,35 @@
             this.label2.Size = new System.Drawing.Size(89, 20);
             this.label2.TabIndex = 9;
             this.label2.Text = "Video Dron";
-//            this.label2.Click += new System.EventHandler(this.label2_Click);
+            // 
+            // labelEstado
+            // 
+            this.labelEstado.AutoSize = true;
+            this.labelEstado.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Bold);
+            this.labelEstado.ForeColor = System.Drawing.Color.Black;
+            this.labelEstado.Location = new System.Drawing.Point(576, 48);
+            this.labelEstado.Name = "labelEstado";
+            this.labelEstado.Size = new System.Drawing.Size(271, 32);
+            this.labelEstado.TabIndex = 10;
+            this.labelEstado.Text = "Esperando gesto...";
+            // 
+            // listBox1
+            // 
+            this.listBox1.Font = new System.Drawing.Font("Consolas", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.listBox1.FormattingEnabled = true;
+            this.listBox1.HorizontalScrollbar = true;
+            this.listBox1.ItemHeight = 23;
+            this.listBox1.Location = new System.Drawing.Point(573, 94);
+            this.listBox1.Name = "listBox1";
+            this.listBox1.Size = new System.Drawing.Size(521, 142);
+            this.listBox1.TabIndex = 11;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(640, 450);
+            this.ClientSize = new System.Drawing.Size(1135, 450);
+            this.Controls.Add(this.listBox1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.button4);
@@ -152,9 +173,9 @@
             this.Controls.Add(this.button2);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.altLbl);
+            this.Controls.Add(this.labelEstado);
             this.Name = "Form1";
             this.Text = "Form1";
-            this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxPC)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxDron)).EndInit();
             this.ResumeLayout(false);
@@ -173,6 +194,8 @@
         private System.Windows.Forms.Button button4;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label labelEstado;
+        private System.Windows.Forms.ListBox listBox1;
     }
 }
 

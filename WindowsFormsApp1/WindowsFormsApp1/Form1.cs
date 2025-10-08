@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using csDronLink;
@@ -14,22 +16,35 @@ namespace WindowsFormsApp1
     {
         Dron miDron = new Dron();
 
-        // Variables para streaming
+        // STREAMING
         private VideoCapture capPC;
         private VideoCapture capDron;
         private bool running = false;
+
+        // TCP SERVER
+        private TcpListener listener;
+        private bool serverRunning = false;
 
         public Form1()
         {
             InitializeComponent();
             CheckForIllegalCrossThreadCalls = false;
+
+            // 🔹 Aquí llamamos manualmente al método de carga
+            Form1_Load(this, EventArgs.Empty);
         }
 
+        // ==========================
+        //     INICIALIZACIÓN
+        // ==========================
         private void Form1_Load(object sender, EventArgs e)
         {
+            IniciarServidorTCP();
         }
 
-        // --------------------------TELEMETRÍA--------------------------
+        // ==========================
+        //     TELEMETRÍA
+        // ==========================
         private void ProcesarTelemetria(byte id, List<(string nombre, float valor)> telemetria)
         {
             foreach (var t in telemetria)
@@ -42,6 +57,9 @@ namespace WindowsFormsApp1
             }
         }
 
+        // ==========================
+        //     BOTONES MANUALES
+        // ==========================
         private void button1_Click_1(object sender, EventArgs e)
         {
             miDron.Conectar("simulacion");
@@ -66,14 +84,10 @@ namespace WindowsFormsApp1
             miDron.Aterrizar(bloquear: false);
         }
 
-        // --------------------------STREAMING--------------------------
         private void button4_Click(object sender, EventArgs e)
         {
-            // Abrir cámara del PC
             capPC = new VideoCapture(0);
-
-            // Abrir streaming del dron
-            capDron = new VideoCapture("tcp://127.0.0.1:57600/live");
+            // capDron = new VideoCapture("tcp://127.0.0.1:5760/live");
 
             running = true;
 
@@ -84,25 +98,13 @@ namespace WindowsFormsApp1
 
                 while (running)
                 {
-                    // Frame de la cámara del PC
                     if (capPC.Read(matPC) && !matPC.Empty())
                     {
-                        string gesture = DetectGesture(matPC);
-                        if (!string.IsNullOrEmpty(gesture))
-                        {
-                            // Usamos OpenCvSharp.Point explícitamente
-                            Cv2.PutText(matPC, $"Gesto: {gesture}", new OpenCvSharp.Point(30, 30),
-                                HersheyFonts.HersheySimplex, 1.0, Scalar.Red, 2);
-
-                            ExecuteGestureAction(gesture);
-                        }
-
                         pictureBoxPC.Image?.Dispose();
                         pictureBoxPC.Image = BitmapConverter.ToBitmap(matPC);
                     }
 
-                    // Frame del dron
-                    if (capDron.Read(matDron) && !matDron.Empty())
+                    if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
                     {
                         pictureBoxDron.Image?.Dispose();
                         pictureBoxDron.Image = BitmapConverter.ToBitmap(matDron);
@@ -111,94 +113,111 @@ namespace WindowsFormsApp1
             });
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        /* private void button5_Click(object sender, EventArgs e)
+         {
+             miDron.CambiarHeading(90, bloquear: false);
+         }
+
+         private void button6_Click(object sender, EventArgs e)
+         {
+             miDron.CambiarHeading(270, bloquear: false);
+         }
+
+         private void button7_Click(object sender, EventArgs e)
+         {
+             miDron.Mover("Forward", 10, bloquear: false);
+         }
+        */
+
+        // ==========================
+        //     TCP SERVER GESTOS
+        // ==========================
+        private void IniciarServidorTCP()
         {
-            running = false;
-            capPC?.Release();
-            capDron?.Release();
-            base.OnFormClosing(e);
-        }
-
-        // --------------------------DETECCIÓN DE GESTOS--------------------------
-        private string DetectGesture(Mat frame)
-        {
-            if (frame.Empty()) return null;
-
-            Mat hsv = new Mat();
-            Cv2.CvtColor(frame, hsv, ColorConversionCodes.BGR2HSV);
-
-            // Color piel (ajusta si no detecta bien)
-            Scalar lower = new Scalar(0, 30, 60);
-            Scalar upper = new Scalar(20, 150, 255);
-            Mat mask = new Mat();
-            Cv2.InRange(hsv, lower, upper, mask);
-
-            Cv2.GaussianBlur(mask, mask, new OpenCvSharp.Size(5, 5), 0);
-            Cv2.Threshold(mask, mask, 127, 255, ThresholdTypes.Binary);
-
-            Cv2.FindContours(mask, out OpenCvSharp.Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
-            if (contours.Length == 0) return null;
-
-            var cnt = contours.OrderByDescending(c => Cv2.ContourArea(c)).First();
-            if (Cv2.ContourArea(cnt) < 2000) return null;
-
-            int[] hull = Cv2.ConvexHullIndices(cnt);
-
-            if (hull.Length > 3)
+            Task.Run(() =>
             {
-                var defects = Cv2.ConvexityDefects(cnt, hull);
-                int fingers = 0;
-                foreach (var defect in defects)
+                try
                 {
-                    OpenCvSharp.Point start = cnt[defect.Item0];
-                    OpenCvSharp.Point end = cnt[defect.Item1];
-                    OpenCvSharp.Point far = cnt[defect.Item2];
+                    int puerto = 5005;
+                    listener = new TcpListener(IPAddress.Parse("127.0.0.1"), puerto);
+                    listener.Start();
+                    serverRunning = true;
 
-                    double a = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
-                    double b = Math.Sqrt(Math.Pow(far.X - start.X, 2) + Math.Pow(far.Y - start.Y, 2));
-                    double c = Math.Sqrt(Math.Pow(end.X - far.X, 2) + Math.Pow(end.Y - far.Y, 2));
-                    double angle = Math.Acos((b * b + c * c - a * a) / (2 * b * c));
+                    listBox1.Items.Add($"Servidor TCP iniciado en puerto {puerto}...");
 
-                    if (angle <= Math.PI / 2)
-                        fingers++;
+                    while (serverRunning)
+                    {
+                        TcpClient client = listener.AcceptTcpClient();
+                        listBox1.Items.Add("Cliente conectado desde Python.");
+
+                        NetworkStream stream = client.GetStream();
+                        byte[] buffer = new byte[1024];
+
+                        while (client.Connected)
+                        {
+                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                            if (bytesRead == 0) break;
+
+                            string mensaje = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+                            listBox1.Items.Add($"Gesto recibido: {mensaje}");
+                            EjecutarAccionPorGesto(mensaje);
+                        }
+
+                        client.Close();
+                        listBox1.Items.Add("Cliente desconectado.");
+                    }
                 }
-
-                if (fingers == 0) return "fist";      // puño -> aterrizar
-                if (fingers == 1) return "one";       // un dedo -> avanzar
-                if (fingers == 2) return "two";       // dos dedos -> derecha
-                if (fingers == 3) return "three";     // tres dedos -> izquierda
-                if (fingers >= 4) return "palm";      // palma abierta -> despegr
-            }
-
-            return null;
+                catch (Exception ex)
+                {
+                    listBox1.Items.Add($"Error en servidor TCP: {ex.Message}");
+                }
+            });
         }
 
-        // --------------------------ACCIONES DEL DRON POR GESTO--------------------------
-        private void ExecuteGestureAction(string gesture)
+        // ==========================
+        //     ACCIONES POR GESTO
+        // ==========================
+        private void EjecutarAccionPorGesto(string gesto)
         {
-            switch (gesture)
+            switch (gesto.ToLower())
             {
-                case "palm": // mano abierta → despegar
+                case "palm":
                     miDron.Despegar(20, bloquear: false, f: EnAire, param: "Volando");
                     break;
 
-                case "fist": // puño → aterrizar
+                case "puño":
                     miDron.Aterrizar(bloquear: false);
                     break;
 
-                case "two": // dos dedos → girar derecha
+                case "uno":
+                    miDron.Mover("Forward", 10, bloquear: false);
+                    break;
+
+                case "dos":
                     miDron.CambiarHeading(90, bloquear: false);
                     break;
 
-                case "three": // tres dedos → girar izquierda
+                case "tres":
                     miDron.CambiarHeading(270, bloquear: false);
                     break;
 
-                case "one": // un dedo → avanzar
-                    miDron.Mover("Forward", 10, bloquear: false);
+                default:
+                    listBox1.Items.Add($"Gesto no reconocido: {gesto}");
                     break;
             }
         }
+
+        // ==========================
+        //     FORM CLOSING
+        // ==========================
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            running = false;
+            serverRunning = false;
+            capPC?.Release();
+            capDron?.Release();
+            listener?.Stop();
+            base.OnFormClosing(e);
+        }
     }
 }
-
