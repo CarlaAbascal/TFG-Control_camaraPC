@@ -10,5 +10,5 @@ Todavía no reconoce los gestos desde el formulario, se ha hecho con un Script d
 
 
 
- 
+He quitado el pictureBoxDron del From
 

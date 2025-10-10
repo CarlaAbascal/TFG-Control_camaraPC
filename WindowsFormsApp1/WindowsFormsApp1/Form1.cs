@@ -104,11 +104,11 @@ namespace WindowsFormsApp1
                         pictureBoxPC.Image = BitmapConverter.ToBitmap(matPC);
                     }
 
-                    if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
+                   /* if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
                     {
                         pictureBoxDron.Image?.Dispose();
                         pictureBoxDron.Image = BitmapConverter.ToBitmap(matDron);
-                    }
+                    }*/
                 }
             });
         }
