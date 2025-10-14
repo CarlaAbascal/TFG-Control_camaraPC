@@ -40,6 +40,7 @@ namespace WindowsFormsApp1
         private void Form1_Load(object sender, EventArgs e)
         {
             IniciarServidorTCP();
+            IniciarScriptPython();
         }
 
         // ==========================
@@ -104,11 +105,11 @@ namespace WindowsFormsApp1
                         pictureBoxPC.Image = BitmapConverter.ToBitmap(matPC);
                     }
 
-                   /* if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
-                    {
-                        pictureBoxDron.Image?.Dispose();
-                        pictureBoxDron.Image = BitmapConverter.ToBitmap(matDron);
-                    }*/
+                    /* if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
+                     {
+                         pictureBoxDron.Image?.Dispose();
+                         pictureBoxDron.Image = BitmapConverter.ToBitmap(matDron);
+                     }*/
                 }
             });
         }
@@ -175,6 +176,54 @@ namespace WindowsFormsApp1
         }
 
         // ==========================
+        //     ARRANCAR SCRIPT PYTHON
+        // ==========================
+        private System.Diagnostics.Process pythonProcess;
+
+        private void IniciarScriptPython()
+        {
+            try
+            {
+                string pythonExe = "python";
+                string scriptPath = System.IO.Path.Combine(Application.StartupPath, "detectar_mano.py");
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = pythonExe,
+                    Arguments = $"\"{scriptPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                pythonProcess = new System.Diagnostics.Process { StartInfo = psi };
+                pythonProcess.OutputDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        listBox1.Items.Add($"[Python]: {e.Data}");
+                };
+                pythonProcess.ErrorDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        listBox1.Items.Add($"[Python ERROR]: {e.Data}");
+                };
+
+                pythonProcess.Start();
+                pythonProcess.BeginOutputReadLine();
+                pythonProcess.BeginErrorReadLine();
+
+                listBox1.Items.Add("Script Python iniciado correctamente.");
+            }
+            catch (Exception ex)
+            {
+                listBox1.Items.Add($"Error al iniciar script Python: {ex.Message}");
+            }
+        }
+
+
+
+        // ==========================
         //     ACCIONES POR GESTO
         // ==========================
         private void EjecutarAccionPorGesto(string gesto)
@@ -217,7 +266,11 @@ namespace WindowsFormsApp1
             capPC?.Release();
             capDron?.Release();
             listener?.Stop();
+
+            if (pythonProcess != null && !pythonProcess.HasExited)
+                pythonProcess.Kill();  // ✅ Cierra el script al salir
+
             base.OnFormClosing(e);
         }
     }
-}
+ }

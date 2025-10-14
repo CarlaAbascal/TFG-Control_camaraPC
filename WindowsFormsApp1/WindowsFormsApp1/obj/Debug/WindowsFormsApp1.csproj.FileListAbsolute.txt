@@ -107,3 +107,4 @@ C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Control_camaraPC\WindowsFormsApp1\Win
 C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Control_camaraPC\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsF.A1EEDF9B.Up2Date
 C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Control_camaraPC\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
 C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Control_camaraPC\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb
+C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Control_camaraPC\WindowsFormsApp1\WindowsFormsApp1\bin\Debug\detectar_mano.py
