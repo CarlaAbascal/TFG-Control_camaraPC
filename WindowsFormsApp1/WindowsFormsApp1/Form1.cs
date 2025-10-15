@@ -9,6 +9,9 @@ using System.Windows.Forms;
 using csDronLink;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
+using System.IO;
+using System.Linq;
+
 
 namespace WindowsFormsApp1
 {
@@ -39,8 +42,10 @@ namespace WindowsFormsApp1
         // ==========================
         private void Form1_Load(object sender, EventArgs e)
         {
-            IniciarServidorTCP();
-            IniciarScriptPython();
+            IniciarServidorTCP();   //Gestos
+            IniciarServidorVideo();   //Video
+            IniciarScriptPython();  // Ejecutar el script Python
+
         }
 
         // ==========================
@@ -85,33 +90,41 @@ namespace WindowsFormsApp1
             miDron.Aterrizar(bloquear: false);
         }
 
+        private bool sistemaActivo = false;
+
         private void button4_Click(object sender, EventArgs e)
         {
-            capPC = new VideoCapture(0);
-            // capDron = new VideoCapture("tcp://127.0.0.1:5760/live");
-
-            running = true;
-
-            Task.Run(() =>
+            if (serverRunning || videoServerRunning)
             {
-                Mat matPC = new Mat();
-                Mat matDron = new Mat();
+                listBox1.Items.Add("⚠️ Los servidores ya están activos.");
+                return;
+            }
 
-                while (running)
-                {
-                    if (capPC.Read(matPC) && !matPC.Empty())
-                    {
-                        pictureBoxPC.Image?.Dispose();
-                        pictureBoxPC.Image = BitmapConverter.ToBitmap(matPC);
-                    }
+            if (!sistemaActivo)
+            {
+                listBox1.Items.Add("Iniciando detección de gestos y vídeo...");
+                IniciarServidorTCP();
+                IniciarServidorVideo();
+                IniciarScriptPython();
+                sistemaActivo = true;
+                button4.Text = "Detener";
+            }
+            else
+            {
+                listBox1.Items.Add("Deteniendo detección...");
+                running = false;
+                serverRunning = false;
+                videoServerRunning = false;
 
-                    /* if (capDron != null && capDron.Read(matDron) && !matDron.Empty())
-                     {
-                         pictureBoxDron.Image?.Dispose();
-                         pictureBoxDron.Image = BitmapConverter.ToBitmap(matDron);
-                     }*/
-                }
-            });
+                listener?.Stop();
+                videoListener?.Stop();
+
+                if (pythonProcess != null && !pythonProcess.HasExited)
+                    pythonProcess.Kill();
+
+                sistemaActivo = false;
+                button4.Text = "Iniciar vídeo";
+            }
         }
 
         /* private void button5_Click(object sender, EventArgs e)
@@ -154,15 +167,32 @@ namespace WindowsFormsApp1
                         NetworkStream stream = client.GetStream();
                         byte[] buffer = new byte[1024];
 
+                        StringBuilder sb = new StringBuilder();
+
                         while (client.Connected)
                         {
                             int bytesRead = stream.Read(buffer, 0, buffer.Length);
                             if (bytesRead == 0) break;
 
-                            string mensaje = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-                            listBox1.Items.Add($"Gesto recibido: {mensaje}");
-                            EjecutarAccionPorGesto(mensaje);
+                            string data = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                            sb.Append(data);
+
+                            // Procesar cada línea completa (cada gesto termina con '\n')
+                            while (sb.ToString().Contains("\n"))
+                            {
+                                string line = sb.ToString();
+                                int index = line.IndexOf('\n');
+                                string mensaje = line.Substring(0, index).Trim();
+                                sb.Remove(0, index + 1);
+
+                                if (!string.IsNullOrWhiteSpace(mensaje))
+                                {
+                                    listBox1.Items.Add($"Gesto recibido: {mensaje}");
+                                    EjecutarAccionPorGesto(mensaje);
+                                }
+                            }
                         }
+
 
                         client.Close();
                         listBox1.Items.Add("Cliente desconectado.");
@@ -220,6 +250,65 @@ namespace WindowsFormsApp1
                 listBox1.Items.Add($"Error al iniciar script Python: {ex.Message}");
             }
         }
+        // ==========================
+        //     VIDEO DESDE PYTHON
+        // ==========================
+        private TcpListener videoListener;
+        private bool videoServerRunning = false;
+
+        private void IniciarServidorVideo()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    int puerto = 5006; // debe coincidir con el del script Python
+                    videoListener = new TcpListener(IPAddress.Parse("127.0.0.1"), puerto);
+                    videoListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    videoListener.Start();
+                    videoServerRunning = true;
+                    listBox1.Items.Add($"Servidor de video iniciado en puerto {puerto}...");
+
+                    TcpClient client = videoListener.AcceptTcpClient();
+                    NetworkStream stream = client.GetStream();
+                    byte[] lengthBuffer = new byte[4];
+
+                    while (videoServerRunning)
+                    {
+                        // Leer los 4 bytes del tamaño
+                        int bytesRead = stream.Read(lengthBuffer, 0, 4);
+                        if (bytesRead == 0) break;
+
+                        int length = BitConverter.ToInt32(lengthBuffer.Reverse().ToArray(), 0);
+                        byte[] imageBuffer = new byte[length];
+
+                        int totalBytes = 0;
+                        while (totalBytes < length)
+                        {
+                            int read = stream.Read(imageBuffer, totalBytes, length - totalBytes);
+                            if (read == 0) break;
+                            totalBytes += read;
+                        }
+
+                        using (var ms = new MemoryStream(imageBuffer))
+                        {
+                            var bmp = new Bitmap(ms);
+                            pictureBoxPC.Invoke(new Action(() =>
+                            {
+                                pictureBoxPC.Image?.Dispose();
+                                pictureBoxPC.Image = new Bitmap(bmp);
+                            }));
+                        }
+                    }
+
+                    client.Close();
+                }
+                catch (Exception ex)
+                {
+                    listBox1.Items.Add($"Error en servidor de video: {ex.Message}");
+                }
+            });
+        }
 
 
 
@@ -271,6 +360,11 @@ namespace WindowsFormsApp1
                 pythonProcess.Kill();  // ✅ Cierra el script al salir
 
             base.OnFormClosing(e);
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
  }
