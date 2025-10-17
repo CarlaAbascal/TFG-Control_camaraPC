@@ -157,7 +157,7 @@ namespace WindowsFormsApp1
                     listener.Start();
                     serverRunning = true;
 
-                    listBox1.Items.Add($"Servidor TCP iniciado en puerto {puerto}...");
+                    listBox1.Items.Add($"Servidor TCP iniciado en puerto {puerto}");
 
                     while (serverRunning)
                     {
@@ -236,8 +236,18 @@ namespace WindowsFormsApp1
                 pythonProcess.ErrorDataReceived += (s, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
-                        listBox1.Items.Add($"[Python ERROR]: {e.Data}");
+                    {
+                        // Filtrar mensajes de TensorFlow/MediaPipe y no se muestren en el listBox
+                        if (!e.Data.Contains("TensorFlow Lite") &&
+                            !e.Data.Contains("XNNPACK") &&
+                            !e.Data.Contains("WARNING") &&
+                            !e.Data.Contains("W0000"))
+                        {
+                            listBox1.Items.Add($"[Python ERROR]: {e.Data}");
+                        }
+                    }
                 };
+
 
                 pythonProcess.Start();
                 pythonProcess.BeginOutputReadLine();
@@ -357,7 +367,7 @@ namespace WindowsFormsApp1
             listener?.Stop();
 
             if (pythonProcess != null && !pythonProcess.HasExited)
-                pythonProcess.Kill();  // ✅ Cierra el script al salir
+                pythonProcess.Kill();  // Cierra el script al salir
 
             base.OnFormClosing(e);
         }
