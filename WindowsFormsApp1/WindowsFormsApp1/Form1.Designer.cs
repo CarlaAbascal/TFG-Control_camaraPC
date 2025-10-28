@@ -33,10 +33,11 @@
             this.button2 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
             this.pictureBoxPC = new System.Windows.Forms.PictureBox();
-            this.button4 = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.labelEstado = new System.Windows.Forms.Label();
             this.listBox1 = new System.Windows.Forms.ListBox();
+            this.btnGestos = new System.Windows.Forms.Button();
+            this.btnObjetos = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxPC)).BeginInit();
             this.SuspendLayout();
             // 
@@ -89,22 +90,10 @@
             // 
             this.pictureBoxPC.Location = new System.Drawing.Point(250, 122);
             this.pictureBoxPC.Name = "pictureBoxPC";
-            this.pictureBoxPC.Size = new System.Drawing.Size(448, 272);
+            this.pictureBoxPC.Size = new System.Drawing.Size(525, 297);
             this.pictureBoxPC.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBoxPC.TabIndex = 5;
             this.pictureBoxPC.TabStop = false;
-            // 
-            // button4
-            // 
-            this.button4.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button4.ForeColor = System.Drawing.Color.SlateGray;
-            this.button4.Location = new System.Drawing.Point(345, 40);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(264, 48);
-            this.button4.TabIndex = 7;
-            this.button4.Text = "Streaming video";
-            this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
             // label1
             // 
@@ -120,7 +109,7 @@
             this.labelEstado.AutoSize = true;
             this.labelEstado.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Bold);
             this.labelEstado.ForeColor = System.Drawing.Color.Black;
-            this.labelEstado.Location = new System.Drawing.Point(729, 48);
+            this.labelEstado.Location = new System.Drawing.Point(801, 48);
             this.labelEstado.Name = "labelEstado";
             this.labelEstado.Size = new System.Drawing.Size(271, 32);
             this.labelEstado.TabIndex = 10;
@@ -132,20 +121,42 @@
             this.listBox1.FormattingEnabled = true;
             this.listBox1.HorizontalScrollbar = true;
             this.listBox1.ItemHeight = 23;
-            this.listBox1.Location = new System.Drawing.Point(735, 94);
+            this.listBox1.Location = new System.Drawing.Point(807, 94);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(553, 303);
+            this.listBox1.Size = new System.Drawing.Size(673, 303);
             this.listBox1.TabIndex = 11;
             this.listBox1.SelectedIndexChanged += new System.EventHandler(this.listBox1_SelectedIndexChanged);
+            // 
+            // btnGestos
+            // 
+            this.btnGestos.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnGestos.Location = new System.Drawing.Point(282, 12);
+            this.btnGestos.Name = "btnGestos";
+            this.btnGestos.Size = new System.Drawing.Size(219, 79);
+            this.btnGestos.TabIndex = 12;
+            this.btnGestos.Text = "Reconocimiento de gestos";
+            this.btnGestos.UseVisualStyleBackColor = true;
+            this.btnGestos.Click += new System.EventHandler(this.btnGestos_Click);
+            // 
+            // btnObjetos
+            // 
+            this.btnObjetos.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
+            this.btnObjetos.Location = new System.Drawing.Point(507, 12);
+            this.btnObjetos.Name = "btnObjetos";
+            this.btnObjetos.Size = new System.Drawing.Size(223, 79);
+            this.btnObjetos.TabIndex = 13;
+            this.btnObjetos.Text = "Reconocimiento de objetos ";
+            this.btnObjetos.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1317, 552);
+            this.ClientSize = new System.Drawing.Size(1553, 552);
+            this.Controls.Add(this.btnObjetos);
+            this.Controls.Add(this.btnGestos);
             this.Controls.Add(this.listBox1);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.button4);
             this.Controls.Add(this.pictureBoxPC);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.button2);
@@ -171,6 +182,9 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label labelEstado;
         private System.Windows.Forms.ListBox listBox1;
+        private System.Windows.Forms.Button btnGestos;
+        private System.Windows.Forms.Button btnObjetos;
+
     }
 }
 

@@ -13,17 +13,21 @@ GESTOS:
 """
 
 import cv2
-import mediapipe as mp
 import socket
 import time
 
-# ---------------------------- CONFIGURACIÓN DEL SOCKET ----------------------------
-# El script Python actúa como cliente TCP.
-# En C# deberás iniciar un servidor (TcpListener) que escuche en el mismo puerto.
+# ---------------------------- INTENTAR IMPORTAR MEDIAPIPE ----------------------------
+try:
+    import mediapipe as mp
+except ImportError:
+    print("[ERROR] No se encuentra la librería 'mediapipe'.")
+    print("👉 Instálala con:")
+    print("   python -m pip install mediapipe==0.10.14")
+    exit()
 
+# ---------------------------- CONFIGURACIÓN DEL SOCKET ----------------------------
 TCP_IP = '127.0.0.1'   # Dirección local (localhost)
 TCP_PORT = 5005        # Puerto de comunicación (debe coincidir con el de C#)
-
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print("[INFO] Conectando con el servidor C#...")
@@ -38,10 +42,13 @@ video_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 video_socket.connect((VIDEO_IP, VIDEO_PORT))
 
 # ---------------------------- CONFIGURACIÓN DE MEDIAPIPE ----------------------------
+# En versiones nuevas, las soluciones están en mp.solutions.hands.Hands
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
+mp_styles = mp.solutions.drawing_styles  # 🔹 estilos más modernos (opcional)
 
 hands = mp_hands.Hands(
+    model_complexity=0,
     static_image_mode=False,
     max_num_hands=1,
     min_detection_confidence=0.7,
@@ -63,7 +70,6 @@ def detectar_gesto(hand_landmarks):
     Determina el gesto según qué dedos están extendidos.
     Devuelve un string con el nombre del gesto.
     """
-
     tips = [4, 8, 12, 16, 20]
     dedos = []
 
@@ -115,7 +121,15 @@ while True:
 
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            # Dibujo de la mano con estilo actualizado
+            mp_drawing.draw_landmarks(
+                frame,
+                hand_landmarks,
+                mp_hands.HAND_CONNECTIONS,
+                mp_styles.get_default_hand_landmarks_style(),
+                mp_styles.get_default_hand_connections_style()
+            )
+
             gesto_detectado = detectar_gesto(hand_landmarks)
 
             ahora = time.time()
@@ -148,4 +162,5 @@ while True:
 cap.release()
 sock.close()
 video_socket.close()
+hands.close()
 print("[INFO] Conexión cerrada correctamente.")

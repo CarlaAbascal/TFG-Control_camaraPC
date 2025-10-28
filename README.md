@@ -41,3 +41,17 @@ Limpieza de "errores" del listBox
 
 El botón de "Streaming video" NO FUNCIONA como interruptor, la cámara se enciende directamente
 
+
+
+-------Versión 1.9------
+
+Botones añadidos: 
+
+&nbsp;	- Reconocimiento de gestos 
+
+&nbsp;	- Reconocimiento de objetos 
+
+
+
+Botón eliminado: Streaming video 
+

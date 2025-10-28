@@ -92,40 +92,6 @@ namespace WindowsFormsApp1
 
         private bool sistemaActivo = false;
 
-        private void button4_Click(object sender, EventArgs e)
-        {
-            if (serverRunning || videoServerRunning)
-            {
-                listBox1.Items.Add("⚠️ Los servidores ya están activos.");
-                return;
-            }
-
-            if (!sistemaActivo)
-            {
-                listBox1.Items.Add("Iniciando detección de gestos y vídeo...");
-                IniciarServidorTCP();
-                IniciarServidorVideo();
-                IniciarScriptPython();
-                sistemaActivo = true;
-                button4.Text = "Detener";
-            }
-            else
-            {
-                listBox1.Items.Add("Deteniendo detección...");
-                running = false;
-                serverRunning = false;
-                videoServerRunning = false;
-
-                listener?.Stop();
-                videoListener?.Stop();
-
-                if (pythonProcess != null && !pythonProcess.HasExited)
-                    pythonProcess.Kill();
-
-                sistemaActivo = false;
-                button4.Text = "Iniciar vídeo";
-            }
-        }
 
         /* private void button5_Click(object sender, EventArgs e)
          {
@@ -148,6 +114,12 @@ namespace WindowsFormsApp1
         // ==========================
         private void IniciarServidorTCP()
         {
+            if (serverRunning)
+            {
+                listBox1.Items.Add("⚠️ El servidor TCP ya está en ejecución.");
+                return;
+            }
+
             Task.Run(() =>
             {
                 try
@@ -214,8 +186,8 @@ namespace WindowsFormsApp1
         {
             try
             {
-                string pythonExe = "python";
-                string scriptPath = System.IO.Path.Combine(Application.StartupPath, "detectar_mano.py");
+                string pythonExe = @"C:\Users\CARLA\AppData\Local\Programs\Python\Python310\python.exe";
+                string scriptPath = @"C:\Users\CARLA\Desktop\UNIVERSITAT\TFG\TFG-Reconocimiento_de_gestos\WindowsFormsApp1\WindowsFormsApp1\detectar_mano.py";
 
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
@@ -231,20 +203,33 @@ namespace WindowsFormsApp1
                 pythonProcess.OutputDataReceived += (s, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
-                        listBox1.Items.Add($"[Python]: {e.Data}");
+                    {
+                        // Filtrar mensajes técnicos irrelevantes
+                        string line = e.Data.Trim();
+                        if (line.StartsWith("W0000") || line.Contains("inference_feedback_manager"))
+                            return; // Ignorar avisos internos de MediaPipe
+                        if (line.Contains("INFO") || line.Contains("DEBUG") ||
+                            line.Contains("MediaPipe") || line.Contains("TensorFlow"))
+                            return; // Ignorar mensajes del framework
+
+                        // Mostrar solo mensajes útiles
+                        listBox1.Items.Add($"[Python]: {line}");
+                    }
                 };
+
                 pythonProcess.ErrorDataReceived += (s, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        // Filtrar mensajes de TensorFlow/MediaPipe y no se muestren en el listBox
-                        if (!e.Data.Contains("TensorFlow Lite") &&
-                            !e.Data.Contains("XNNPACK") &&
-                            !e.Data.Contains("WARNING") &&
-                            !e.Data.Contains("W0000"))
-                        {
-                            listBox1.Items.Add($"[Python ERROR]: {e.Data}");
-                        }
+                        string line = e.Data.Trim();
+                        // Ignorar advertencias y logs ruidosos
+                        if (line.Contains("TensorFlow") || line.Contains("XNNPACK") ||
+                            line.Contains("WARNING") || line.Contains("DeprecationWarning") ||
+                            line.StartsWith("W0000") || line.Contains("inference_feedback_manager"))
+                            return;
+
+                        // Mostrar solo errores relevantes
+                        listBox1.Items.Add($"⚠️ {line}");
                     }
                 };
 
@@ -253,13 +238,14 @@ namespace WindowsFormsApp1
                 pythonProcess.BeginOutputReadLine();
                 pythonProcess.BeginErrorReadLine();
 
-                listBox1.Items.Add("Script Python iniciado correctamente.");
+                listBox1.Items.Add("✅ Script Python iniciado correctamente.");
             }
             catch (Exception ex)
             {
-                listBox1.Items.Add($"Error al iniciar script Python: {ex.Message}");
+                listBox1.Items.Add($"❌ Error al iniciar script Python: {ex.Message}");
             }
         }
+
         // ==========================
         //     VIDEO DESDE PYTHON
         // ==========================
@@ -267,58 +253,84 @@ namespace WindowsFormsApp1
         private bool videoServerRunning = false;
 
         private void IniciarServidorVideo()
+{
+    Task.Run(() =>
+    {
+        try
         {
-            Task.Run(() =>
+            int puerto = 5006; // debe coincidir con Python
+            videoListener = new TcpListener(IPAddress.Parse("127.0.0.1"), puerto);
+            videoListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            videoListener.Start();
+            videoServerRunning = true;
+            listBox1.Items.Add($"Servidor de video iniciado en puerto {puerto}...");
+
+            while (videoServerRunning)
             {
+                TcpClient client = videoListener.AcceptTcpClient();
+                listBox1.Items.Add("Cliente de video conectado desde Python.");
+
                 try
                 {
-                    int puerto = 5006; // debe coincidir con el del script Python
-                    videoListener = new TcpListener(IPAddress.Parse("127.0.0.1"), puerto);
-                    videoListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    videoListener.Start();
-                    videoServerRunning = true;
-                    listBox1.Items.Add($"Servidor de video iniciado en puerto {puerto}...");
-
-                    TcpClient client = videoListener.AcceptTcpClient();
                     NetworkStream stream = client.GetStream();
                     byte[] lengthBuffer = new byte[4];
 
-                    while (videoServerRunning)
+                    while (videoServerRunning && client.Connected)
                     {
-                        // Leer los 4 bytes del tamaño
                         int bytesRead = stream.Read(lengthBuffer, 0, 4);
-                        if (bytesRead == 0) break;
+                        if (bytesRead < 4) break; // lectura parcial -> esperar nuevo cliente
 
                         int length = BitConverter.ToInt32(lengthBuffer.Reverse().ToArray(), 0);
-                        byte[] imageBuffer = new byte[length];
+                        if (length <= 0) continue;
 
+                        byte[] imageBuffer = new byte[length];
                         int totalBytes = 0;
+
                         while (totalBytes < length)
                         {
                             int read = stream.Read(imageBuffer, totalBytes, length - totalBytes);
-                            if (read == 0) break;
+                            if (read <= 0) break;
                             totalBytes += read;
                         }
 
-                        using (var ms = new MemoryStream(imageBuffer))
+                        if (totalBytes == length)
                         {
-                            var bmp = new Bitmap(ms);
-                            pictureBoxPC.Invoke(new Action(() =>
+                            using (var ms = new MemoryStream(imageBuffer))
                             {
-                                pictureBoxPC.Image?.Dispose();
-                                pictureBoxPC.Image = new Bitmap(bmp);
-                            }));
+                                try
+                                {
+                                    var bmp = new Bitmap(ms);
+                                    pictureBoxPC.Invoke(new Action(() =>
+                                    {
+                                        pictureBoxPC.Image?.Dispose();
+                                        pictureBoxPC.Image = new Bitmap(bmp);
+                                    }));
+                                }
+                                catch
+                                {
+                                    listBox1.Items.Add("⚠️ Frame recibido inválido.");
+                                }
+                            }
                         }
                     }
-
-                    client.Close();
                 }
                 catch (Exception ex)
                 {
-                    listBox1.Items.Add($"Error en servidor de video: {ex.Message}");
+                    listBox1.Items.Add($"⚠️ Error en la conexión de video: {ex.Message}");
                 }
-            });
+                finally
+                {
+                    client.Close();
+                    listBox1.Items.Add("Cliente de video desconectado. Esperando nueva conexión...");
+                }
+            }
         }
+        catch (Exception ex)
+        {
+            listBox1.Items.Add($"❌ Error en servidor de video: {ex.Message}");
+        }
+    });
+}
 
 
 
@@ -376,5 +388,46 @@ namespace WindowsFormsApp1
         {
 
         }
+
+        private void btnGestos_Click(object sender, EventArgs e)
+        {
+            listBox1.Items.Add("Activando reconocimiento de gestos...");
+
+            // Evita iniciar dos veces el script o los servidores
+            if (pythonProcess != null && !pythonProcess.HasExited)
+            {
+                listBox1.Items.Add("⚠️ El script Python ya está en ejecución.");
+                return;
+            }
+
+            if (serverRunning || videoServerRunning)
+            {
+                listBox1.Items.Add("⚠️ Los servidores ya están activos.");
+                return;
+            }
+
+            if (!sistemaActivo)
+            {
+                IniciarServidorTCP();
+                IniciarServidorVideo();
+                IniciarScriptPython();
+                sistemaActivo = true;
+                listBox1.Items.Add("Reconocimiento de gestos activado.");
+            }
+            else
+            {
+                listBox1.Items.Add("El sistema ya está activo.");
+            }
+        }
+
+        //-----Boton preparado, pero no funcionando----
+        private void btnObjetos_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Módulo de reconocimiento de objetos próximamente.",
+                            "En desarrollo",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+        }
+
     }
- }
+}
